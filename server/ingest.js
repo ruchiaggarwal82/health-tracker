@@ -149,7 +149,8 @@ async function main() {
       console.log(`✅  Added: ${report.date} · ${report.provider} (${Object.keys(report.variables).length} variables)`);
       added++;
     } catch (err) {
-      console.error(`❌  Failed to process ${filename}: ${err.message}`);
+      console.error(`❌  Failed to process ${filename}:`);
+      console.error(err);
     }
   }
 
