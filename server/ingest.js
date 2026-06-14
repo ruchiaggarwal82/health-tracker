@@ -8,6 +8,16 @@ const PDFS_DIR = path.join(__dirname, '../pdfs');
 const DATA_FILE = path.join(__dirname, '../data/reports.json');
 const PROCESSED_LOG = path.join(__dirname, '../data/processed.json');
 
+// Normalize provider names to avoid duplicates from OCR variations
+function normalizeProvider(name) {
+  if (!name) return name;
+  const n = name.trim().toLowerCase();
+  if (n.includes('tata') || n.includes('1mg')) return 'TATA 1Mg';
+  if (n.includes('lal path') || n.includes('lal path')) return 'Dr. Lal PathLabs';
+  if (n.includes('artemis')) return 'Artemis Hospitals';
+  return name.trim();
+}
+
 // Load env
 const envPath = path.join(__dirname, '../.env');
 if (fs.existsSync(envPath)) {
@@ -141,6 +151,7 @@ async function main() {
       }
 
       report.id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      report.provider = normalizeProvider(report.provider);
       data.reports.push(report);
       processed.push(filename);
       saveProcessed(processed);
