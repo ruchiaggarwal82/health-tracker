@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import VariableChart from './components/VariableChart.jsx';
 import AddReportModal from './components/AddReportModal.jsx';
 import ReportsList from './components/ReportsList.jsx';
@@ -13,6 +13,8 @@ export default function App() {
   const [selectedVars, setSelectedVars] = useState(DEFAULT_SELECTED_VARS);
   const [activeProviders, setActiveProviders] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -23,10 +25,15 @@ export default function App() {
       setData(json);
       setActiveProviders(prev => {
         const allProviders = getUniqueProviders(json.reports);
-        // Keep existing toggles, add new providers as active
         const next = allProviders.filter(p => !prev.includes(p));
         return [...prev.filter(p => allProviders.includes(p)), ...next];
       });
+      // Set default date range to full span of reports
+      if (json.reports.length) {
+        const dates = json.reports.map(r => r.date).sort();
+        setDateFrom(prev => prev || dates[0]);
+        setDateTo(prev => prev || dates[dates.length - 1]);
+      }
     } catch {
       setError('Cannot connect to server. Run: npm run dev');
     } finally {
@@ -35,6 +42,15 @@ export default function App() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filteredReports = useMemo(() => {
+    if (!data) return [];
+    return data.reports.filter(r => {
+      if (dateFrom && r.date < dateFrom) return false;
+      if (dateTo && r.date > dateTo) return false;
+      return true;
+    });
+  }, [data, dateFrom, dateTo]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>
@@ -65,6 +81,15 @@ export default function App() {
     );
   }
 
+  function resetDateRange() {
+    if (!reports.length) return;
+    const dates = reports.map(r => r.date).sort();
+    setDateFrom(dates[0]);
+    setDateTo(dates[dates.length - 1]);
+  }
+
+  const isFiltered = filteredReports.length !== reports.length;
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -72,7 +97,10 @@ export default function App() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight">{patient.name}'s Health Tracker</h1>
-            <p className="text-slate-400 text-sm mt-0.5">{patient.age}F · Blood Reports · {reports.length} reports on file</p>
+            <p className="text-slate-400 text-sm mt-0.5">
+              {patient.age}F · Blood Reports · {filteredReports.length}
+              {isFiltered ? ` of ${reports.length}` : ''} reports shown
+            </p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -86,6 +114,40 @@ export default function App() {
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         {/* Controls */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-4">
+
+          {/* Date range */}
+          <div>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Date Range</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {isFiltered && (
+                <button
+                  onClick={resetDateRange}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
+                >
+                  Reset to all
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Provider toggles */}
           <div>
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Providers</p>
@@ -142,7 +204,7 @@ export default function App() {
             {selectedVars.map(v => (
               <VariableChart
                 key={v}
-                reports={reports}
+                reports={filteredReports}
                 variableKey={v}
                 activeProviders={activeProviders}
               />
@@ -151,7 +213,7 @@ export default function App() {
         )}
 
         {/* Reports list */}
-        <ReportsList reports={reports} onDeleted={fetchData} />
+        <ReportsList reports={filteredReports} onDeleted={fetchData} />
       </main>
 
       {showModal && (
