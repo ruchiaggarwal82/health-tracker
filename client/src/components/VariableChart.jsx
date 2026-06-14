@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceArea, Legend, Dot
+  ResponsiveContainer, ReferenceArea, Legend,
 } from 'recharts';
-import { buildChartData, formatDate, getProviderColor, VARIABLE_LABELS } from '../utils/dataHelpers.js';
+import {
+  buildChartData, getMonthlyTicks, formatMonthYear, formatFullDate,
+  getProviderColor, VARIABLE_LABELS,
+} from '../utils/dataHelpers.js';
 
-function CustomDot({ cx, cy, payload, dataKey, variable }) {
+function CustomDot({ cx, cy, payload, dataKey }) {
   const flag = payload[`${dataKey}_flag`];
   const color = flag === 'H' ? '#EF4444' : flag === 'L' ? '#F97316' : '#22C55E';
   if (cx == null || cy == null || payload[dataKey] == null) return null;
   return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />;
 }
 
-function CustomTooltip({ active, payload, label, variable }) {
+function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
+  const dateStr = payload[0]?.payload?.date;
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold text-gray-700 mb-1">{new Date(label + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+      <p className="font-semibold text-gray-700 mb-1">{dateStr ? formatFullDate(dateStr) : ''}</p>
       {payload.map(entry => {
         const flag = entry.payload[`${entry.dataKey}_flag`];
         return (
@@ -53,9 +57,13 @@ export default function VariableChart({ reports, variableKey, activeProviders })
   const yMin = Math.max(0, +(minVal - pad).toFixed(2));
   const yMax = +(maxVal + pad).toFixed(2);
 
+  const monthlyTicks = getMonthlyTicks(data);
+  const xDomain = monthlyTicks.length >= 2
+    ? [monthlyTicks[0], monthlyTicks[monthlyTicks.length - 1]]
+    : ['dataMin', 'dataMax'];
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-      {/* Header — always visible */}
       <div
         className="flex items-center justify-between px-5 py-4 cursor-pointer select-none"
         onClick={() => setCollapsed(c => !c)}
@@ -73,25 +81,24 @@ export default function VariableChart({ reports, variableKey, activeProviders })
         </button>
       </div>
 
-      {/* Chart — collapsible */}
       {!collapsed && (
         <div className="px-5 pb-5">
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
               {refRangeLow != null && (
                 <ReferenceArea y1={refRangeLow} y2={refRangeHigh} fill="#F0FDF4" fillOpacity={0.6} />
               )}
               <XAxis
-                dataKey="date"
-                tickFormatter={formatDate}
+                dataKey="timestamp"
+                type="number"
+                scale="time"
+                domain={xDomain}
+                ticks={monthlyTicks}
+                tickFormatter={formatMonthYear}
                 tick={{ fontSize: 11, fill: '#94A3B8' }}
                 axisLine={{ stroke: '#E2E8F0' }}
-                tickLine={false}
-                interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={50}
+                tickLine={{ stroke: '#E2E8F0' }}
               />
               <YAxis
                 domain={[yMin, yMax]}
@@ -100,7 +107,7 @@ export default function VariableChart({ reports, variableKey, activeProviders })
                 tickLine={false}
                 width={45}
               />
-              <Tooltip content={<CustomTooltip variable={variableKey} />} />
+              <Tooltip content={<CustomTooltip />} />
               {providers.length > 1 && <Legend wrapperStyle={{ fontSize: 11 }} />}
               {providers.map(provider => (
                 <Line
@@ -109,7 +116,7 @@ export default function VariableChart({ reports, variableKey, activeProviders })
                   dataKey={provider}
                   stroke={getProviderColor(provider)}
                   strokeWidth={2}
-                  dot={(props) => <CustomDot {...props} variable={variableKey} />}
+                  dot={(props) => <CustomDot {...props} />}
                   connectNulls={false}
                   activeDot={{ r: 6 }}
                 />

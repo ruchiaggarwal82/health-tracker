@@ -72,19 +72,52 @@ export function buildChartData(reports, variableKey, activeProviders) {
 
   const providers = [...new Set(filtered.map(r => r.provider))];
 
-  // Build one data point per unique date, with a key per provider
   const byDate = {};
   filtered.forEach(r => {
-    if (!byDate[r.date]) byDate[r.date] = { date: r.date };
+    if (!byDate[r.date]) {
+      byDate[r.date] = {
+        date: r.date,
+        timestamp: new Date(r.date + 'T00:00:00').getTime(),
+      };
+    }
     byDate[r.date][r.provider] = r.variables[variableKey].value;
     byDate[r.date][`${r.provider}_flag`] = r.variables[variableKey].flag;
-    byDate[r.date][`${r.provider}_reportId`] = r.id;
   });
 
-  return { data: Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date)), providers };
+  const data = Object.values(byDate).sort((a, b) => a.timestamp - b.timestamp);
+  return { data, providers };
 }
 
-export function formatDate(dateStr) {
+// Generate timestamps for the 1st of every month between two dates
+export function getMonthlyTicks(data) {
+  if (!data.length) return [];
+  const minTs = data[0].timestamp;
+  const maxTs = data[data.length - 1].timestamp;
+
+  const ticks = [];
+  const start = new Date(minTs);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(maxTs);
+  end.setDate(1);
+  end.setHours(0, 0, 0, 0);
+  end.setMonth(end.getMonth() + 1); // include the end month
+
+  const cur = new Date(start);
+  while (cur <= end) {
+    ticks.push(cur.getTime());
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return ticks;
+}
+
+export function formatMonthYear(timestamp) {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+}
+
+export function formatFullDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
