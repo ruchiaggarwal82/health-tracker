@@ -78,5 +78,5 @@ export function buildChartData(reports, variableKey, activeProviders) {
 
 export function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
 }

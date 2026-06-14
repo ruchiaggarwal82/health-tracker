@@ -74,6 +74,10 @@ export default function VariableChart({ reports, variableKey, activeProviders })
             tick={{ fontSize: 11, fill: '#94A3B8' }}
             axisLine={{ stroke: '#E2E8F0' }}
             tickLine={false}
+            interval={0}
+            angle={-35}
+            textAnchor="end"
+            height={50}
           />
           <YAxis
             domain={[yMin, yMax]}
