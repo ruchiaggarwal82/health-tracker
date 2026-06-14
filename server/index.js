@@ -7,6 +7,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, '../data/reports.json');
+const VARS_FILE = path.join(__dirname, '../data/custom-variables.json');
+
+function readCustomVars() {
+  if (!fs.existsSync(VARS_FILE)) return {};
+  return JSON.parse(fs.readFileSync(VARS_FILE, 'utf-8'));
+}
 
 const app = express();
 app.use(cors({ origin: 'http://localhost:5173' }));
@@ -21,7 +27,7 @@ function writeData(data) {
 }
 
 app.get('/api/reports', (req, res) => {
-  res.json(readData());
+  res.json({ ...readData(), customVariables: readCustomVars() });
 });
 
 app.post('/api/reports', (req, res) => {

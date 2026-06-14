@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import VariableChart from './components/VariableChart.jsx';
 import AddReportModal from './components/AddReportModal.jsx';
 import ReportsList from './components/ReportsList.jsx';
-import { getUniqueProviders, getVariablesAcrossReports, getProviderColor, VARIABLE_LABELS } from './utils/dataHelpers.js';
+import { getUniqueProviders, getVariablesAcrossReports, getProviderColor, VARIABLE_LABELS, mergeCustomVariables } from './utils/dataHelpers.js';
 
 const DEFAULT_SELECTED_VARS = ['hemoglobin', 'rbc', 'tlc', 'monocytes_pct', 'platelets'];
 
@@ -19,6 +19,7 @@ export default function App() {
       const res = await fetch('/api/reports');
       if (!res.ok) throw new Error('Server error');
       const json = await res.json();
+      mergeCustomVariables(json.customVariables);
       setData(json);
       setActiveProviders(prev => {
         const allProviders = getUniqueProviders(json.reports);

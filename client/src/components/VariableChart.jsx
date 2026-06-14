@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceArea, Legend, Dot
@@ -37,16 +37,15 @@ function CustomTooltip({ active, payload, label, variable }) {
 }
 
 export default function VariableChart({ reports, variableKey, activeProviders }) {
+  const [collapsed, setCollapsed] = useState(false);
   const { data, providers } = buildChartData(reports, variableKey, activeProviders);
 
   if (data.length === 0) return null;
 
-  // Get ref range from first available report that has this variable
   const sampleReport = reports.find(r => r.variables[variableKey]);
   const { refRangeLow, refRangeHigh, unit } = sampleReport?.variables[variableKey] || {};
   const label = VARIABLE_LABELS[variableKey] || variableKey;
 
-  // Compute Y domain with padding
   const allValues = data.flatMap(d => providers.map(p => d[p]).filter(v => v != null));
   const minVal = Math.min(...allValues, refRangeLow ?? Infinity);
   const maxVal = Math.max(...allValues, refRangeHigh ?? -Infinity);
@@ -55,53 +54,70 @@ export default function VariableChart({ reports, variableKey, activeProviders })
   const yMax = +(maxVal + pad).toFixed(2);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+      {/* Header — always visible */}
+      <div
+        className="flex items-center justify-between px-5 py-4 cursor-pointer select-none"
+        onClick={() => setCollapsed(c => !c)}
+      >
         <div>
           <h3 className="font-semibold text-gray-800 text-base">{label}</h3>
-          {unit && <p className="text-xs text-gray-400 mt-0.5">Unit: {unit} {refRangeLow != null ? `· Normal: ${refRangeLow}–${refRangeHigh}` : ''}</p>}
-        </div>
-      </div>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-          {refRangeLow != null && (
-            <ReferenceArea y1={refRangeLow} y2={refRangeHigh} fill="#F0FDF4" fillOpacity={0.6} />
+          {unit && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              Unit: {unit}{refRangeLow != null ? ` · Normal: ${refRangeLow}–${refRangeHigh}` : ''}
+            </p>
           )}
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: '#94A3B8' }}
-            axisLine={{ stroke: '#E2E8F0' }}
-            tickLine={false}
-            interval={0}
-            angle={-35}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis
-            domain={[yMin, yMax]}
-            tick={{ fontSize: 11, fill: '#94A3B8' }}
-            axisLine={false}
-            tickLine={false}
-            width={45}
-          />
-          <Tooltip content={<CustomTooltip variable={variableKey} />} />
-          {providers.length > 1 && <Legend wrapperStyle={{ fontSize: 11 }} />}
-          {providers.map(provider => (
-            <Line
-              key={provider}
-              type="monotone"
-              dataKey={provider}
-              stroke={getProviderColor(provider)}
-              strokeWidth={2}
-              dot={(props) => <CustomDot {...props} variable={variableKey} />}
-              connectNulls={false}
-              activeDot={{ r: 6 }}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+        </div>
+        <button className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1 rounded hover:bg-gray-50 transition-colors">
+          {collapsed ? '▼ Show' : '▲ Hide'}
+        </button>
+      </div>
+
+      {/* Chart — collapsible */}
+      {!collapsed && (
+        <div className="px-5 pb-5">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={data} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+              {refRangeLow != null && (
+                <ReferenceArea y1={refRangeLow} y2={refRangeHigh} fill="#F0FDF4" fillOpacity={0.6} />
+              )}
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatDate}
+                tick={{ fontSize: 11, fill: '#94A3B8' }}
+                axisLine={{ stroke: '#E2E8F0' }}
+                tickLine={false}
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                domain={[yMin, yMax]}
+                tick={{ fontSize: 11, fill: '#94A3B8' }}
+                axisLine={false}
+                tickLine={false}
+                width={45}
+              />
+              <Tooltip content={<CustomTooltip variable={variableKey} />} />
+              {providers.length > 1 && <Legend wrapperStyle={{ fontSize: 11 }} />}
+              {providers.map(provider => (
+                <Line
+                  key={provider}
+                  type="monotone"
+                  dataKey={provider}
+                  stroke={getProviderColor(provider)}
+                  strokeWidth={2}
+                  dot={(props) => <CustomDot {...props} variable={variableKey} />}
+                  connectNulls={false}
+                  activeDot={{ r: 6 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

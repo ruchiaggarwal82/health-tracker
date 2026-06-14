@@ -1,3 +1,11 @@
+// Merge server-side custom variables into labels/defaults at runtime
+export function mergeCustomVariables(customVariables = {}) {
+  Object.entries(customVariables).forEach(([key, cfg]) => {
+    VARIABLE_LABELS[key] = cfg.label;
+    VARIABLE_DEFAULTS[key] = { unit: cfg.unit, refRangeLow: cfg.refRangeLow, refRangeHigh: cfg.refRangeHigh };
+  });
+}
+
 export const VARIABLE_LABELS = {
   hemoglobin: 'Hemoglobin',
   tlc: 'WBC / Total Leukocyte Count',
